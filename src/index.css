@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-nardo-grey: #6B7075;
+  --color-nardo-light: #C0C0C0;
+  --color-off-white: #F8F9FA;
+  --color-dark-bg: #121212;
+  --color-dark-card: #1E1E1E;
+}
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.glass-card {
+  @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl;
+}
+
+.nardo-gradient {
+  background: linear-gradient(135deg, #6B7075 0%, #323538 100%);
+}
+
+/* Animations for progress bars */
+@keyframes grow {
+  from { width: 0; }
+  to { width: var(--final-width); }
+}
+
+.animate-grow {
+  animation: grow 1s ease-out forwards;
+}
