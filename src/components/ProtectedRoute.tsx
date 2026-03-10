@@ -41,7 +41,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
 
     // Voting status check (Prompt 3 & 10 logic)
-    if (checkVoted && profile.has_voted) {
+    if (profile && checkVoted && profile.has_voted) {
         return <Navigate to="/confirmation" replace />;
     }
 
