@@ -24,13 +24,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         );
     }
 
-    if (!user || !profile) {
+    if (!user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    // Attempt to handle profile-less state (e.g. trigger didn't fire yet)
+    if (!profile && !loading) {
+        // We can either show a setup screen or just let them stay on login
+        // But let's assume if they have a user but no profile, something went wrong with the trigger
+        return <div className="p-8 text-center">Profil en cours de création ou erreur de base de données...</div>;
+    }
+
     // Role check
-    if (allowedRole && profile.role !== allowedRole) {
-        // Redirect voters to vote, admins to dashboard
+    if (profile && allowedRole && profile.role !== allowedRole) {
         return <Navigate to={profile.role === 'admin' ? '/admin' : '/vote'} replace />;
     }
 

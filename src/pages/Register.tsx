@@ -35,28 +35,21 @@ const Register = () => {
         }
 
         try {
-            // 1. Auth Signup
+            // 1. Auth Signup with metadata (for the trigger)
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    data: {
+                        matricule: matricule
+                    }
+                }
             });
 
             if (authError) throw authError;
 
             if (authData.user) {
-                // 2. Create Profile
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .insert([
-                        {
-                            id: authData.user.id,
-                            matricule,
-                            email,
-                            role: 'voter', // Default role
-                        },
-                    ]);
-
-                if (profileError) throw profileError;
+                // Success - the trigger handle_new_user will create the profile automatically
                 navigate('/vote');
             }
         } catch (err: any) {

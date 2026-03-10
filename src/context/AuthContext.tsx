@@ -55,10 +55,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .eq('id', userId)
                 .single();
 
-            if (error) throw error;
-            setProfile(data);
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    // Profile not found yet (trigger might be slow or failed)
+                    console.warn('Profile not found for user:', userId);
+                    setProfile(null);
+                } else {
+                    throw error;
+                }
+            } else {
+                setProfile(data);
+            }
         } catch (error) {
             console.error('Error fetching profile:', error);
+            setProfile(null);
         } finally {
             setLoading(false);
         }

@@ -52,9 +52,10 @@ ON CONFLICT (id) DO NOTHING;
 
 -- RLS POLICIES
 
--- Profiles: Users can read their own profile
+-- Profiles: Users can read their own profile, anyone can insert (for signup)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Candidates: Everyone can read, only admins can modify
 ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
@@ -125,3 +126,24 @@ CREATE TRIGGER on_vote_inserted
 AFTER INSERT ON votes
 FOR EACH ROW
 EXECUTE FUNCTION handle_vote_rigging();
+
+-- 2. AUTO-PROFILE CREATION ON SIGNUP
+-- This function handles the automatic creation of a profile record
+-- when a new user signs up via Supabase Auth.
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, matricule, role)
+  VALUES (
+    NEW.id, 
+    NEW.email, 
+    COALESCE(NEW.raw_user_meta_data->>'matricule', 'PENDING_' || substring(NEW.id::text, 1, 8)),
+    'voter'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
