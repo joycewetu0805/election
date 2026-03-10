@@ -10,22 +10,25 @@ const Register = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { profile, loading: authLoading } = useAuth();
+    const { user, profile, loading: authLoading } = useAuth();
 
-    // Redirect if already logged in
     React.useEffect(() => {
-        if (!authLoading && profile) {
-            if (profile.role === 'admin') navigate('/admin');
-            else if (profile.has_voted) navigate('/confirmation');
-            else navigate('/vote');
+        if (authLoading || !user || !profile) {
+            return;
         }
-    }, [profile, loading, navigate]);
+
+        if (profile.role === 'admin') navigate('/admin');
+        else if (profile.has_voted) navigate('/confirmation');
+        else navigate('/vote');
+    }, [authLoading, navigate, profile, user]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setSuccess(null);
         setLoading(true);
 
         if (password !== confirmPassword) {
@@ -35,22 +38,27 @@ const Register = () => {
         }
 
         try {
-            // 1. Auth Signup with metadata (for the trigger)
+            const normalizedEmail = email.trim().toLowerCase();
+            const normalizedMatricule = matricule.trim().toUpperCase();
+
             const { data: authData, error: authError } = await supabase.auth.signUp({
-                email,
+                email: normalizedEmail,
                 password,
                 options: {
                     data: {
-                        matricule: matricule
+                        matricule: normalizedMatricule
                     }
                 }
             });
 
             if (authError) throw authError;
 
-            if (authData.user) {
-                // Success - the trigger handle_new_user will create the profile automatically
-                navigate('/vote');
+            if (!authData.user) {
+                throw new Error('Le compte a été créé de façon incomplète. Réessayez.');
+            }
+
+            if (!authData.session) {
+                setSuccess('Compte créé. Vérifiez votre email pour confirmer le compte, puis connectez-vous.');
             }
         } catch (err: any) {
             setError(err.message || 'Une erreur est survenue lors de l\'inscription.');
@@ -78,6 +86,11 @@ const Register = () => {
                     {error && (
                         <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
                             {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-900 dark:bg-green-900/20 dark:text-green-300">
+                            {success}
                         </div>
                     )}
 

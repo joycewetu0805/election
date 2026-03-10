@@ -59,7 +59,7 @@ CREATE POLICY "Users can insert their own profile" ON profiles FOR INSERT WITH C
 
 -- Candidates: Everyone can read, only admins can modify
 ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can view candidates" ON candidates FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Anyone can view candidates" ON candidates FOR SELECT USING (true);
 CREATE POLICY "Admins can manage candidates" ON candidates FOR ALL TO authenticated 
 USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
@@ -67,12 +67,14 @@ USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can insert their own vote" ON votes FOR INSERT TO authenticated 
 WITH CHECK (auth.uid() = user_id AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND has_voted = true));
+CREATE POLICY "Users can view their own vote" ON votes FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
 CREATE POLICY "Admins can view all votes" ON votes FOR SELECT TO authenticated 
 USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Site Settings: Everyone can read, only admins can modify
 ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can view site settings" ON site_settings FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Anyone can view site settings" ON site_settings FOR SELECT USING (true);
 CREATE POLICY "Admins can manage site settings" ON site_settings FOR ALL TO authenticated 
 USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 

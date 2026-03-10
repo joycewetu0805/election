@@ -25,8 +25,9 @@ const Confirmation = () => {
     }, [profile]);
 
     const fetchVotedCandidate = async () => {
-        // Joining votes and candidates (Prompt 10)
-        const { data } = await supabase
+        const storedCandidate = window.localStorage.getItem('lastVotedCandidate');
+
+        const { data, error } = await supabase
             .from('votes')
             .select(`
         candidate:candidates (
@@ -39,11 +40,17 @@ const Confirmation = () => {
         if (data?.candidate) {
             const candidateInfo = data.candidate as unknown as { name: string };
             setVotedCandidate(candidateInfo.name);
+            window.localStorage.setItem('lastVotedCandidate', candidateInfo.name);
+        } else if (storedCandidate) {
+            setVotedCandidate(storedCandidate);
+        } else if (error) {
+            console.error('Error fetching voted candidate:', error);
         }
         setLoading(false);
     };
 
     const handleLogout = async () => {
+        window.localStorage.removeItem('lastVotedCandidate');
         await signOut();
         navigate('/login');
     };

@@ -10,16 +10,17 @@ const Login = () => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { profile, loading: authLoading } = useAuth();
+    const { user, profile, loading: authLoading } = useAuth();
 
-    // Redirect if already logged in (Prompt 3 & 10)
     React.useEffect(() => {
-        if (!authLoading && profile) {
-            if (profile.role === 'admin') navigate('/admin');
-            else if (profile.has_voted) navigate('/confirmation');
-            else navigate('/vote');
+        if (authLoading || !user || !profile) {
+            return;
         }
-    }, [profile, loading, navigate]);
+
+        if (profile.role === 'admin') navigate('/admin');
+        else if (profile.has_voted) navigate('/confirmation');
+        else navigate('/vote');
+    }, [authLoading, navigate, profile, user]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,24 +28,21 @@ const Login = () => {
         setLoading(true);
 
         try {
-            // In a real scenario, we might want to allow login via matricule
-            // For Supabase Auth, email is standard. If they enter a matricule, 
-            // we'd need a mapping or a custom edge function.
-            // For simplicity, we assume Email login as per Supabase defaults.
+            const normalizedEmail = email.trim().toLowerCase();
 
-            const { data, error: authError } = await supabase.auth.signInWithPassword({
-                email,
+            const { error: authError } = await supabase.auth.signInWithPassword({
+                email: normalizedEmail,
                 password,
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                if (authError.message.toLowerCase().includes('email not confirmed')) {
+                    throw new Error('Votre email n’est pas encore confirmé. Ouvrez le lien reçu par email puis reconnectez-vous.');
+                }
 
-            // Profile logic handled by ProtectedRoute/AuthContext
-            // But we can do a quick redirect here if data is available
-            if (data.user) {
-                // The redirection will be handled by the next render cycle 
-                // via the AuthContext and ProtectedRoute
+                throw authError;
             }
+
         } catch (err: any) {
             setError(err.message || 'Identifiants invalides.');
         } finally {
@@ -88,6 +86,9 @@ const Login = () => {
                                 className="mt-1 block w-full rounded-lg border border-nardo-light bg-transparent px-3 py-2 text-black dark:text-white focus:border-nardo-grey focus:outline-none focus:ring-1 focus:ring-nardo-grey"
                                 placeholder="votre@email.com"
                             />
+                            <p className="mt-1 text-xs text-nardo-grey">
+                                La connexion se fait avec votre email, pas avec le matricule.
+                            </p>
                         </div>
                         <div>
                             <label htmlFor="password" title="password" className="block text-sm font-medium text-nardo-grey">

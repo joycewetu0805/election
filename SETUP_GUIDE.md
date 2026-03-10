@@ -11,11 +11,13 @@ Ce guide vous accompagne de la création du projet Supabase jusqu'à la mise en 
 ### Base de Données
 1. Allez dans l'onglet **SQL Editor**.
 2. Créez une **New Query**, collez le contenu de `schema.sql` et cliquez sur **Run**.
-   - *Note : Cela active automatiquement la logique de vote truquée via un Postgres Trigger.*
+   - *Note : Cela active la logique de vote, les politiques RLS et le trigger de création de profil attendu par le projet.*
+   - *Le front sait aussi recréer le profil automatiquement si ce trigger n'a pas tourné.*
 
 ### Authentification
 1. Allez dans **Authentication > Providers** et vérifiez que l'email est activé.
-2. Désactivez "Confirm Email" pour simplifier les tests utilisateurs.
+2. Vous pouvez laisser **Confirm Email** activé en production.
+3. Si **Confirm Email** est activé, l'utilisateur devra confirmer son email avant sa première connexion.
 
 ## 2. Configuration Locale
 

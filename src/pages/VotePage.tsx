@@ -54,7 +54,11 @@ const VotePage = () => {
 
             if (error) throw error;
 
-            // The trigger will handle has_voted update
+            const selectedCandidate = candidates.find((candidate) => candidate.id === selectedId);
+            if (selectedCandidate) {
+                window.localStorage.setItem('lastVotedCandidate', selectedCandidate.name);
+            }
+
             navigate('/confirmation');
         } catch (err) {
             console.error('Error submitting vote:', err);

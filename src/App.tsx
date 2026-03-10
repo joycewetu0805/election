@@ -11,7 +11,13 @@ import Results from './pages/Results';
 
 const RootRedirect = () => {
     const { user, profile, loading } = useAuth();
-    if (loading) return null;
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-off-white dark:bg-dark-bg">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-nardo-grey border-t-transparent"></div>
+            </div>
+        );
+    }
     if (!user) return <Navigate to="/login" replace />;
     if (profile?.role === 'admin') return <Navigate to="/admin" replace />;
     if (profile?.has_voted) return <Navigate to="/confirmation" replace />;
