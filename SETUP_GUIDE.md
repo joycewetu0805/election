@@ -35,6 +35,13 @@ Ce guide vous accompagne de la création du projet Supabase jusqu'à la mise en 
 ## 3. Paramétrage de l'Élection
 
 1. **Compte Admin** : Inscrivez-vous sur `/register`, puis changez votre `role` en `admin` dans la table `profiles` sur Supabase.
+   Exemple SQL :
+   ```sql
+   UPDATE public.profiles
+   SET role = 'admin'
+   WHERE email = 'admin@example.com';
+   ```
+   Un script prêt à l'emploi est aussi disponible dans `supabase_make_admin.sql`.
 2. **CMS** : Modifiez les textes sur `/admin/settings`.
 3. **Candidats** : Ajoutez les candidats sur `/admin/candidates`. Cliquez sur l'étoile (**Star**) pour activer la priorité sur le candidat de votre choix.
 

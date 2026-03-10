@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { BarChart3, TrendingUp, Users, AlertTriangle, Star } from 'lucide-react';
+import { TrendingUp, Users, AlertTriangle, Star } from 'lucide-react';
 
 interface StatsCandidate {
     id: number;
@@ -24,30 +24,41 @@ const Statistics = () => {
         const { count: profCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
 
         if (candData) setCandidates(candData);
-        if (profCount) setTotalProfiles(profCount);
+        if (typeof profCount === 'number') setTotalProfiles(profCount);
         setLoading(false);
     };
 
     const totalRealVotes = candidates.reduce((sum, c) => sum + (c.real_votes || 0), 0);
     const participationRate = totalProfiles > 0 ? (totalRealVotes / totalProfiles) * 100 : 0;
+    const totalGap = candidates.reduce((sum, c) => sum + (c.displayed_votes - c.real_votes), 0);
+
+    if (loading) {
+        return (
+            <div className="rounded-3xl border border-nardo-light/20 bg-white p-6 shadow-sm dark:bg-dark-card">
+                Chargement...
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-8">
-            <header>
-                <h1 className="text-3xl font-bold tracking-tight">Statistiques (Vue Réelle)</h1>
-                <p className="text-nardo-grey">Analyse comparative des votes réels vs affichés publiquement.</p>
+        <div className="space-y-6 lg:space-y-8">
+            <header className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-nardo-grey">Administration</p>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Statistiques</h1>
+                <p className="max-w-2xl text-sm text-nardo-grey sm:text-base">
+                    Comparez les chiffres réels et affichés avec une lecture confortable sur tous les formats d’écran.
+                </p>
             </header>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-nardo-light/20 shadow-sm">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="rounded-3xl border border-nardo-light/20 bg-white p-5 shadow-sm dark:bg-dark-card sm:p-6">
                     <div className="flex items-center justify-between">
                         <p className="text-nardo-grey text-sm font-medium uppercase tracking-wider">Inscrits Totaux</p>
                         <Users className="text-nardo-grey" size={20} />
                     </div>
                     <p className="text-3xl font-bold mt-2">{totalProfiles}</p>
                 </div>
-                <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-nardo-light/20 shadow-sm">
+                <div className="rounded-3xl border border-nardo-light/20 bg-white p-5 shadow-sm dark:bg-dark-card sm:p-6">
                     <div className="flex items-center justify-between">
                         <p className="text-nardo-grey text-sm font-medium uppercase tracking-wider">Taux de Participation</p>
                         <TrendingUp className="text-nardo-grey" size={20} />
@@ -57,52 +68,93 @@ const Statistics = () => {
                         <div className="h-full bg-black dark:bg-nardo-grey rounded-full" style={{ width: `${participationRate}%` }}></div>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-nardo-light/20 shadow-sm">
+                <div className="rounded-3xl border border-nardo-light/20 bg-white p-5 shadow-sm dark:bg-dark-card sm:col-span-2 sm:p-6 xl:col-span-1">
                     <div className="flex items-center justify-between">
                         <p className="text-nardo-grey text-sm font-medium uppercase tracking-wider">Écart Global</p>
                         <AlertTriangle className="text-yellow-500" size={20} />
                     </div>
-                    <p className="text-3xl font-bold mt-2">
-                        {candidates.reduce((sum, c) => sum + (c.displayed_votes - c.real_votes), 0)} voix
-                    </p>
+                    <p className="text-3xl font-bold mt-2">{totalGap} voix</p>
                     <p className="text-xs text-nardo-grey mt-1">Générées par le système de priorité</p>
                 </div>
             </div>
 
-            {/* Comparative Table */}
-            <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-nardo-light/20 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-nardo-grey/5 text-nardo-grey uppercase text-xs tracking-widest border-b border-nardo-light/10">
-                            <th className="px-6 py-4 font-semibold">Candidat</th>
-                            <th className="px-6 py-4 font-semibold">Votes Réels</th>
-                            <th className="px-6 py-4 font-semibold">Votes Affichés</th>
-                            <th className="px-6 py-4 font-semibold text-right">Écart (%)</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-nardo-light/10">
-                        {candidates.map((c) => {
-                            const diff = c.displayed_votes - c.real_votes;
-                            const diffPercent = c.real_votes > 0 ? (diff / c.real_votes) * 100 : (diff > 0 ? 100 : 0);
+            <div className="grid gap-4 lg:hidden">
+                {candidates.map((candidate) => {
+                    const diff = candidate.displayed_votes - candidate.real_votes;
+                    const diffPercent = candidate.real_votes > 0 ? (diff / candidate.real_votes) * 100 : (diff > 0 ? 100 : 0);
+                    const diffPrefix = diffPercent > 0 ? '+' : '';
 
-                            return (
-                                <tr key={c.id} className="hover:bg-nardo-grey/5 transition-colors">
-                                    <td className="px-6 py-4 flex items-center font-bold">
-                                        {c.is_featured && <Star size={16} className="text-yellow-500 mr-2" fill="currentColor" />}
-                                        {c.name}
-                                    </td>
-                                    <td className="px-6 py-4 font-mono">{c.real_votes}</td>
-                                    <td className="px-6 py-4 font-mono font-bold text-nardo-grey">{c.displayed_votes}</td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${diff > 0 ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : 'bg-green-50 text-green-600'}`}>
-                                            +{diffPercent.toFixed(1)}%
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                    return (
+                        <article
+                            key={candidate.id}
+                            className="rounded-3xl border border-nardo-light/20 bg-white p-4 shadow-sm dark:bg-dark-card"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        {candidate.is_featured && <Star size={16} className="text-yellow-500" fill="currentColor" />}
+                                        <h2 className="text-lg font-bold">{candidate.name}</h2>
+                                    </div>
+                                    <p className="mt-1 text-sm text-nardo-grey">Suivi détaillé des écarts</p>
+                                </div>
+                                <span className={`rounded-full px-3 py-1 text-xs font-bold ${diff > 0 ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-300'}`}>
+                                    {diffPrefix}{diffPercent.toFixed(1)}%
+                                </span>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-2 gap-3">
+                                <div className="rounded-2xl bg-nardo-grey/5 p-3">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-nardo-grey">Votes réels</p>
+                                    <p className="mt-2 font-mono text-2xl font-bold">{candidate.real_votes}</p>
+                                </div>
+                                <div className="rounded-2xl bg-nardo-grey/5 p-3">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-nardo-grey">Votes affichés</p>
+                                    <p className="mt-2 font-mono text-2xl font-bold">{candidate.displayed_votes}</p>
+                                </div>
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
+
+            <div className="hidden overflow-hidden rounded-3xl border border-nardo-light/20 bg-white shadow-sm dark:bg-dark-card lg:block">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px] border-collapse text-left">
+                        <thead>
+                            <tr className="border-b border-nardo-light/10 bg-nardo-grey/5 text-xs font-semibold uppercase tracking-widest text-nardo-grey">
+                                <th className="px-6 py-4">Candidat</th>
+                                <th className="px-6 py-4">Votes Réels</th>
+                                <th className="px-6 py-4">Votes Affichés</th>
+                                <th className="px-6 py-4 text-right">Écart (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-nardo-light/10">
+                            {candidates.map((candidate) => {
+                                const diff = candidate.displayed_votes - candidate.real_votes;
+                                const diffPercent = candidate.real_votes > 0 ? (diff / candidate.real_votes) * 100 : (diff > 0 ? 100 : 0);
+                                const diffPrefix = diffPercent > 0 ? '+' : '';
+
+                                return (
+                                    <tr key={candidate.id} className="transition-colors hover:bg-nardo-grey/5">
+                                        <td className="px-6 py-4 font-bold">
+                                            <div className="flex items-center">
+                                                {candidate.is_featured && <Star size={16} className="mr-2 text-yellow-500" fill="currentColor" />}
+                                                {candidate.name}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 font-mono">{candidate.real_votes}</td>
+                                        <td className="px-6 py-4 font-mono font-bold text-nardo-grey">{candidate.displayed_votes}</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className={`rounded px-2 py-1 text-xs font-bold ${diff > 0 ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-300'}`}>
+                                                {diffPrefix}{diffPercent.toFixed(1)}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

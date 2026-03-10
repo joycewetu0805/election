@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { ChartNoAxesColumn, Clock3, Users, Vote } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { BarChart3, Users, Clock, Vote } from 'lucide-react';
 
 interface CandidateResults {
     id: number;
@@ -12,6 +12,7 @@ interface CandidateResults {
 interface SiteSettings {
     title: string;
     subtitle: string;
+    description: string;
 }
 
 const Results = () => {
@@ -19,38 +20,41 @@ const Results = () => {
     const [settings, setSettings] = useState<SiteSettings | null>(null);
     const [totalDisplayedVotes, setTotalDisplayedVotes] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
     useEffect(() => {
-        fetchInitialData();
+        void fetchInitialData();
 
-        // Prompt 8: Real-time update via Supabase Channel
         const channel = supabase
             .channel('results-changes')
             .on(
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'candidates' },
                 () => {
-                    fetchCandidatesOnly();
+                    void fetchCandidatesOnly();
                 }
             )
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            void supabase.removeChannel(channel);
         };
     }, []);
 
+    const syncCandidates = (data: CandidateResults[]) => {
+        setCandidates(data);
+        setTotalDisplayedVotes(data.reduce((sum, candidate) => sum + (candidate.displayed_votes || 0), 0));
+        setLastUpdated(new Date());
+    };
+
     const fetchInitialData = async () => {
-        const [candRes, setRes] = await Promise.all([
+        const [candidateResponse, settingsResponse] = await Promise.all([
             supabase.from('candidates').select('id, name, faculty, displayed_votes').order('displayed_votes', { ascending: false }),
-            supabase.from('site_settings').select('title, subtitle').eq('id', 1).single()
+            supabase.from('site_settings').select('title, subtitle, description').eq('id', 1).single()
         ]);
 
-        if (candRes.data) {
-            setCandidates(candRes.data);
-            setTotalDisplayedVotes(candRes.data.reduce((sum, c) => sum + (c.displayed_votes || 0), 0));
-        }
-        if (setRes.data) setSettings(setRes.data);
+        if (candidateResponse.data) syncCandidates(candidateResponse.data);
+        if (settingsResponse.data) setSettings(settingsResponse.data);
         setLoading(false);
     };
 
@@ -60,88 +64,128 @@ const Results = () => {
             .select('id, name, faculty, displayed_votes')
             .order('displayed_votes', { ascending: false });
 
-        if (data) {
-            setCandidates(data);
-            setTotalDisplayedVotes(data.reduce((sum, c) => sum + (c.displayed_votes || 0), 0));
-        }
+        if (data) syncCandidates(data);
     };
 
-    if (loading) return <div className="flex h-screen items-center justify-center">Chargement...</div>;
+    if (loading) {
+        return (
+            <div className="surface-panel mx-auto max-w-6xl p-8">
+                Chargement...
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-4xl mx-auto px-6 py-16 space-y-12">
-            <header className="text-center space-y-4">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 bg-nardo-grey/10 text-nardo-grey rounded-full text-xs font-bold uppercase tracking-widest">
-                    <Clock size={14} />
-                    <span>Résultats en temps réel</span>
-                </div>
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase">{settings?.title}</h1>
-                <p className="text-xl text-nardo-grey font-medium">{settings?.subtitle}</p>
-            </header>
+        <div className="space-y-6">
+            <section className="surface-panel site-grid overflow-hidden p-6 sm:p-8 lg:p-10">
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-end">
+                    <div className="space-y-5">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-nardo-grey/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.32em] text-nardo-grey">
+                            <span className="h-2.5 w-2.5 rounded-full bg-nardo-grey animate-pulse-soft"></span>
+                            <span>Temps réel</span>
+                        </div>
 
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-dark-card p-8 rounded-3xl border border-nardo-light/20 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p className="text-nardo-grey text-sm font-bold uppercase tracking-widest">Total des suffrages</p>
-                        <p className="text-4xl font-black mt-1">{totalDisplayedVotes}</p>
+                        <div className="space-y-3">
+                            <h1 className="headline-display text-3xl sm:text-4xl lg:text-5xl">
+                                {settings?.title}
+                            </h1>
+                            <p className="text-lg text-nardo-grey sm:text-xl">{settings?.subtitle}</p>
+                            <p className="max-w-3xl text-sm leading-7 text-nardo-grey sm:text-base">
+                                {settings?.description}
+                            </p>
+                        </div>
                     </div>
-                    <div className="bg-black dark:bg-nardo-grey p-4 rounded-2xl text-white">
-                        <Vote size={32} />
-                    </div>
-                </div>
-                <div className="bg-white dark:bg-dark-card p-8 rounded-3xl border border-nardo-light/20 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p className="text-nardo-grey text-sm font-bold uppercase tracking-widest">Candidats</p>
-                        <p className="text-4xl font-black mt-1">{candidates.length}</p>
-                    </div>
-                    <div className="bg-nardo-light/20 p-4 rounded-2xl text-nardo-grey">
-                        <Users size={32} />
-                    </div>
-                </div>
-            </div>
 
-            {/* Results List (Prompt 8 & 9: Vertical Ranking) */}
-            <div className="space-y-6">
+                    <div className="rounded-[1.75rem] border border-nardo-light/15 bg-white/72 p-5 dark:bg-dark-card/72">
+                        <p className="section-kicker">Dernière mise à jour</p>
+                        <p className="mt-3 text-2xl font-bold tracking-tight">
+                            {lastUpdated ? lastUpdated.toLocaleTimeString() : '--:--:--'}
+                        </p>
+                        <p className="mt-2 text-sm text-nardo-grey">
+                            Les chiffres bougent automatiquement dès qu’un nouveau vote modifie le classement.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <article className="surface-panel p-5 sm:p-6">
+                    <div className="flex items-center justify-between">
+                        <p className="section-kicker">Suffrages</p>
+                        <Vote size={18} className="text-nardo-grey" />
+                    </div>
+                    <p className="mt-3 text-4xl font-black tracking-tight">{totalDisplayedVotes}</p>
+                    <p className="mt-2 text-sm text-nardo-grey">Total des voix actuellement visibles.</p>
+                </article>
+
+                <article className="surface-panel p-5 sm:p-6">
+                    <div className="flex items-center justify-between">
+                        <p className="section-kicker">Profils</p>
+                        <Users size={18} className="text-nardo-grey" />
+                    </div>
+                    <p className="mt-3 text-4xl font-black tracking-tight">{candidates.length}</p>
+                    <p className="mt-2 text-sm text-nardo-grey">Nombre de candidats présents dans le classement.</p>
+                </article>
+
+                <article className="surface-panel p-5 sm:p-6 sm:col-span-2 xl:col-span-1">
+                    <div className="flex items-center justify-between">
+                        <p className="section-kicker">Lecture</p>
+                        <ChartNoAxesColumn size={18} className="text-nardo-grey" />
+                    </div>
+                    <p className="mt-3 text-xl font-bold tracking-tight">Classement vertical continu</p>
+                    <p className="mt-2 text-sm text-nardo-grey">
+                        Les barres sont calculées sur la somme totale des voix affichées pour conserver une répartition lisible à 100%.
+                    </p>
+                </article>
+            </section>
+
+            <section className="space-y-4">
                 {candidates.map((candidate, index) => {
                     const percentage = totalDisplayedVotes > 0
                         ? (candidate.displayed_votes / totalDisplayedVotes) * 100
                         : 0;
 
                     return (
-                        <div key={candidate.id} className="animate-in fade-in slide-in-from-left duration-500" style={{ animationDelay: `${index * 100}ms` }}>
-                            <div className="flex justify-between items-end mb-2">
-                                <div className="flex items-center space-x-3">
-                                    <span className="text-2xl font-black text-nardo-light/40">#{index + 1}</span>
+                        <article
+                            key={candidate.id}
+                            className="surface-panel overflow-hidden p-5 sm:p-6"
+                            style={{ animationDelay: `${index * 70}ms` }}
+                        >
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black text-lg font-black text-white dark:bg-off-white dark:text-black">
+                                        #{index + 1}
+                                    </div>
                                     <div>
-                                        <p className="text-lg font-bold tracking-tight">{candidate.name}</p>
-                                        <p className="text-xs text-nardo-grey font-medium uppercase tracking-wider">{candidate.faculty}</p>
+                                        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{candidate.name}</h2>
+                                        <p className="mt-1 text-sm font-medium uppercase tracking-[0.18em] text-nardo-grey">
+                                            {candidate.faculty}
+                                        </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xl font-black">{percentage.toFixed(1)}%</p>
-                                    <p className="text-xs text-nardo-grey font-medium italic">{candidate.displayed_votes} voix</p>
+
+                                <div className="sm:text-right">
+                                    <p className="text-2xl font-black tracking-tight">{percentage.toFixed(1)}%</p>
+                                    <p className="mt-1 text-sm text-nardo-grey">{candidate.displayed_votes} voix</p>
                                 </div>
                             </div>
 
-                            {/* Progress Bar Container */}
-                            <div className="h-4 w-full bg-nardo-light/10 rounded-full overflow-hidden border border-nardo-light/5">
+                            <div className="mt-5 h-4 overflow-hidden rounded-full border border-nardo-light/10 bg-nardo-light/10">
                                 <div
-                                    className="h-full bg-black dark:bg-nardo-grey rounded-full transition-all duration-1000 ease-out flex items-center px-2"
+                                    className="h-full rounded-full bg-black transition-all duration-1000 ease-out dark:bg-off-white"
                                     style={{ width: `${percentage}%` }}
-                                >
-                                    {percentage > 5 && <div className="h-1 w-full bg-white/20 rounded-full"></div>}
-                                </div>
+                                ></div>
                             </div>
-                        </div>
+                        </article>
                     );
                 })}
-            </div>
+            </section>
 
-            <footer className="pt-12 text-center">
-                <p className="text-nardo-grey text-sm font-medium">
-                    Dernière mise à jour : {new Date().toLocaleTimeString()}
-                </p>
+            <footer className="pb-4 text-center text-sm text-nardo-grey">
+                Lecture publique actualisée automatiquement. Dernière synchro:{' '}
+                <span className="font-semibold text-black dark:text-off-white">
+                    {lastUpdated ? lastUpdated.toLocaleTimeString() : '--:--:--'}
+                </span>
             </footer>
         </div>
     );

@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicLayout from './components/PublicLayout';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -18,7 +20,7 @@ const RootRedirect = () => {
             </div>
         );
     }
-    if (!user) return <Navigate to="/login" replace />;
+    if (!user) return <Navigate to="/resultats" replace />;
     if (profile?.role === 'admin') return <Navigate to="/admin" replace />;
     if (profile?.has_voted) return <Navigate to="/confirmation" replace />;
     return <Navigate to="/vote" replace />;
@@ -27,35 +29,39 @@ const RootRedirect = () => {
 function App() {
     return (
         <Router>
-            <AuthProvider>
-                <div className="min-h-screen bg-off-white text-black dark:bg-dark-bg dark:text-off-white">
-                    <Routes>
-                        <Route path="/" element={<RootRedirect />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/resultats" element={<Results />} />
+            <ThemeProvider>
+                <AuthProvider>
+                    <div className="min-h-screen bg-off-white text-black dark:bg-dark-bg dark:text-off-white">
+                        <Routes>
+                            <Route path="/" element={<RootRedirect />} />
 
-                        {/* Protected Routes */}
-                        <Route path="/vote" element={
-                            <ProtectedRoute allowedRole="voter" checkVoted>
-                                <VotePage />
-                            </ProtectedRoute>
-                        } />
+                            <Route element={<PublicLayout />}>
+                                <Route path="/login" element={<Login />} />
+                                <Route path="/register" element={<Register />} />
+                                <Route path="/resultats" element={<Results />} />
+                                <Route path="/vote" element={
+                                    <ProtectedRoute allowedRole="voter" checkVoted>
+                                        <VotePage />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="/confirmation" element={
+                                    <ProtectedRoute allowedRole="voter">
+                                        <Confirmation />
+                                    </ProtectedRoute>
+                                } />
+                            </Route>
 
-                        <Route path="/confirmation" element={
-                            <ProtectedRoute allowedRole="voter">
-                                <Confirmation />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/admin/*" element={
+                                <ProtectedRoute allowedRole="admin">
+                                    <AdminDashboard />
+                                </ProtectedRoute>
+                            } />
 
-                        <Route path="/admin/*" element={
-                            <ProtectedRoute allowedRole="admin">
-                                <AdminDashboard />
-                            </ProtectedRoute>
-                        } />
-                    </Routes>
-                </div>
-            </AuthProvider>
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                    </div>
+                </AuthProvider>
+            </ThemeProvider>
         </Router>
     );
 }

@@ -9,25 +9,110 @@
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
   html {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: "Geist", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top, rgba(107, 112, 117, 0.12), transparent 42%),
+      linear-gradient(180deg, #ffffff 0%, #f5f6f7 100%);
+    color: #000000;
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at top, rgba(192, 192, 192, 0.12), transparent 35%),
+      linear-gradient(180deg, #101010 0%, #171717 100%);
+    color: #f3f4f6;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(107, 112, 117, 0.28);
+    color: inherit;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button,
+  a,
+  input,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
-.glass-card {
-  @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl;
+@layer components {
+  .surface-panel {
+    @apply rounded-[1.75rem] border border-nardo-light/15 bg-white/82 shadow-[0_24px_80px_rgba(0,0,0,0.06)] backdrop-blur-xl dark:bg-dark-card/82;
+  }
+
+  .surface-panel-strong {
+    @apply rounded-[2rem] border border-nardo-light/15 bg-white shadow-[0_28px_90px_rgba(0,0,0,0.08)] dark:bg-dark-card;
+  }
+
+  .section-kicker {
+    @apply text-[11px] font-bold uppercase tracking-[0.32em] text-nardo-grey;
+  }
+
+  .headline-display {
+    @apply font-black uppercase tracking-[0.16em];
+  }
+
+  .field-shell {
+    @apply w-full rounded-2xl border border-nardo-light/20 bg-white/70 px-4 py-3.5 text-sm text-black outline-none transition-colors placeholder:text-nardo-grey/80 focus:border-nardo-grey focus:ring-2 focus:ring-nardo-grey/20 dark:bg-dark-bg/60 dark:text-off-white;
+  }
+
+  .primary-button {
+    @apply inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-off-white dark:text-black;
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center justify-center rounded-full border border-nardo-light/20 bg-white/75 px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-nardo-grey/10 dark:bg-dark-card/75 dark:text-off-white;
+  }
 }
 
-.nardo-gradient {
-  background: linear-gradient(135deg, #6B7075 0%, #323538 100%);
+.site-grid {
+  background-image:
+    linear-gradient(rgba(107, 112, 117, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(107, 112, 117, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-/* Animations for progress bars */
-@keyframes grow {
-  from { width: 0; }
-  to { width: var(--final-width); }
+.dark .site-grid {
+  background-image:
+    linear-gradient(rgba(192, 192, 192, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(192, 192, 192, 0.06) 1px, transparent 1px);
 }
 
-.animate-grow {
-  animation: grow 1s ease-out forwards;
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.75; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.8s ease-in-out infinite;
 }

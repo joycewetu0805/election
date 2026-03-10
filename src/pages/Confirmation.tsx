@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { CheckCircle2, Loader2, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { CheckCircle2, LogOut, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 const Confirmation = () => {
     const { profile, signOut } = useAuth();
@@ -11,13 +11,14 @@ const Confirmation = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // 1. Prevent going back (Prompt 7)
         window.history.pushState(null, '', window.location.href);
         window.onpopstate = () => {
             window.history.pushState(null, '', window.location.href);
         };
 
-        if (profile) fetchVotedCandidate();
+        if (profile) {
+            void fetchVotedCandidate();
+        }
 
         return () => {
             window.onpopstate = null;
@@ -30,10 +31,10 @@ const Confirmation = () => {
         const { data, error } = await supabase
             .from('votes')
             .select(`
-        candidate:candidates (
-          name
-        )
-      `)
+                candidate:candidates (
+                    name
+                )
+            `)
             .eq('user_id', profile?.id)
             .single();
 
@@ -46,6 +47,7 @@ const Confirmation = () => {
         } else if (error) {
             console.error('Error fetching voted candidate:', error);
         }
+
         setLoading(false);
     };
 
@@ -56,38 +58,43 @@ const Confirmation = () => {
     };
 
     return (
-        <div className="flex h-screen items-center justify-center p-6 text-center">
-            <div className="max-w-md w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex justify-center">
-                    <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center">
-                        <CheckCircle2 size={48} className="animate-bounce" />
+        <div className="mx-auto max-w-3xl">
+            <section className="surface-panel-strong overflow-hidden p-6 text-center sm:p-8 lg:p-12">
+                <div className="mx-auto flex max-w-2xl flex-col items-center space-y-8">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-300">
+                        <CheckCircle2 size={52} />
                     </div>
-                </div>
 
-                <div className="space-y-4">
-                    <h1 className="text-4xl font-black tracking-tighter uppercase">Vote Enregistré</h1>
-                    <p className="text-lg text-nardo-grey font-medium italic">
-                        "Merci pour votre participation ! Votre vote a été pris en compte."
-                    </p>
+                    <div className="space-y-4">
+                        <p className="section-kicker">Parcours terminé</p>
+                        <h1 className="headline-display text-3xl sm:text-4xl lg:text-5xl">
+                            Vote enregistré
+                        </h1>
+                        <p className="text-base leading-8 text-nardo-grey sm:text-lg">
+                            Merci pour votre participation. Votre vote a été pris en compte et cette étape ne peut plus être modifiée.
+                        </p>
+                    </div>
 
-                    <div className="mt-8 p-6 bg-white dark:bg-dark-card rounded-2xl border border-nardo-light/20 shadow-sm">
-                        <p className="text-xs uppercase tracking-widest text-nardo-grey mb-2">Votre choix</p>
+                    <div className="surface-panel w-full max-w-xl p-6 sm:p-8">
+                        <p className="section-kicker">Votre choix</p>
                         {loading ? (
-                            <Loader2 className="animate-spin mx-auto text-nardo-light" />
+                            <Loader2 className="mx-auto mt-5 h-7 w-7 animate-spin text-nardo-grey" />
                         ) : (
-                            <p className="text-2xl font-bold tracking-tight">{votedCandidate || 'Candidat inconnu'}</p>
+                            <p className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">
+                                {votedCandidate || 'Candidat inconnu'}
+                            </p>
                         )}
+                        <p className="mt-3 text-sm leading-7 text-nardo-grey">
+                            Cette page verrouille volontairement le retour arrière pour éviter toute reprise du parcours de vote.
+                        </p>
                     </div>
-                </div>
 
-                <button
-                    onClick={handleLogout}
-                    className="mt-12 flex items-center justify-center mx-auto space-x-2 px-8 py-4 bg-black text-white dark:bg-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-all shadow-lg"
-                >
-                    <LogOut size={20} />
-                    <span>Se déconnecter</span>
-                </button>
-            </div>
+                    <button onClick={handleLogout} className="primary-button px-8 py-4 text-base">
+                        <LogOut size={18} className="mr-2" />
+                        Se déconnecter
+                    </button>
+                </div>
+            </section>
         </div>
     );
 };

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { AlertCircle, Check, CheckCheck, Image as ImageIcon, Loader2, Vote } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Check, AlertCircle, Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface Candidate {
     id: number;
@@ -15,6 +15,7 @@ interface SiteSettings {
     title: string;
     subtitle: string;
     description: string;
+    is_active: boolean;
 }
 
 const VotePage = () => {
@@ -29,22 +30,22 @@ const VotePage = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetchData();
+        void fetchData();
     }, []);
 
     const fetchData = async () => {
-        const [candRes, setRes] = await Promise.all([
+        const [candidateResponse, settingsResponse] = await Promise.all([
             supabase.from('candidates').select('id, name, faculty, photo_url'),
-            supabase.from('site_settings').select('title, subtitle, description').eq('id', 1).single()
+            supabase.from('site_settings').select('title, subtitle, description, is_active').eq('id', 1).single()
         ]);
 
-        if (candRes.data) setCandidates(candRes.data);
-        if (setRes.data) setSettings(setRes.data);
+        if (candidateResponse.data) setCandidates(candidateResponse.data);
+        if (settingsResponse.data) setSettings(settingsResponse.data);
         setLoading(false);
     };
 
     const handleVote = async () => {
-        if (!selectedId || !profile) return;
+        if (!selectedId || !profile || !settings?.is_active) return;
         setSubmitting(true);
 
         try {
@@ -69,94 +70,191 @@ const VotePage = () => {
         }
     };
 
-    if (loading) return <div className="flex h-screen items-center justify-center">Chargement...</div>;
+    const selectedCandidate = candidates.find((candidate) => candidate.id === selectedId) ?? null;
+    const isVoteActive = settings?.is_active ?? false;
+    const actionDisabled = !selectedCandidate || !isVoteActive || submitting;
+
+    if (loading) {
+        return (
+            <div className="surface-panel mx-auto max-w-6xl p-8">
+                Chargement...
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
-            {/* Header */}
-            <header className="text-center space-y-4">
-                <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase">{settings?.title}</h1>
-                <p className="text-xl text-nardo-grey font-medium tracking-tight">{settings?.subtitle}</p>
-                <div className="max-w-2xl mx-auto p-4 bg-nardo-grey/5 border border-nardo-light/20 rounded-xl text-sm text-nardo-grey italic">
-                    {settings?.description}
-                </div>
-            </header>
-
-            {/* Candidate Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {candidates.map((candidate) => {
-                    const isSelected = selectedId === candidate.id;
-                    return (
-                        <div
-                            key={candidate.id}
-                            onClick={() => setSelectedId(candidate.id)}
-                            className={`
-                relative group cursor-pointer rounded-2xl overflow-hidden border-2 transition-all duration-300
-                ${isSelected
-                                    ? 'border-black dark:border-white ring-4 ring-nardo-grey/10 scale-[1.02]'
-                                    : 'border-transparent bg-white dark:bg-dark-card hover:border-nardo-light opacity-100'}
-                ${selectedId !== null && !isSelected ? 'opacity-50 grayscale-[0.5]' : ''}
-              `}
-                        >
-                            <div className="aspect-[4/5] bg-nardo-light/10 relative">
-                                {candidate.photo_url ? (
-                                    <img src={candidate.photo_url} alt={candidate.name} className="h-full w-full object-cover" />
-                                ) : (
-                                    <div className="h-full w-full flex items-center justify-center">
-                                        <ImageIcon size={48} className="text-nardo-light" />
-                                    </div>
-                                )}
-                                {isSelected && (
-                                    <div className="absolute top-4 right-4 bg-black dark:bg-white text-white dark:text-black p-2 rounded-full shadow-lg">
-                                        <Check size={20} />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="p-6">
-                                <h3 className="text-xl font-bold tracking-tight">{candidate.name}</h3>
-                                <p className="text-nardo-grey font-medium">{candidate.faculty}</p>
-                            </div>
+        <div className="space-y-6">
+            <section className="surface-panel site-grid overflow-hidden p-6 sm:p-8 lg:p-10">
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
+                    <div className="space-y-5">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-nardo-grey/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.32em] text-nardo-grey">
+                            <Vote size={14} />
+                            <span>Bulletin unique</span>
                         </div>
-                    );
-                })}
-            </div>
-
-            {/* Action Footer */}
-            <footer className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-lg border-t border-nardo-light/20 flex justify-center z-40">
-                <button
-                    disabled={selectedId === null}
-                    onClick={() => setShowConfirm(true)}
-                    className="w-full max-w-md py-4 bg-black text-white dark:bg-nardo-grey rounded-xl font-bold text-lg hover:scale-[1.02] transition-all disabled:opacity-30 disabled:scale-100"
-                >
-                    Valider mon choix
-                </button>
-            </footer>
-
-            {/* Confirmation Modal */}
-            {showConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-                    <div className="w-full max-w-sm bg-white dark:bg-dark-card rounded-2xl p-8 shadow-2xl border border-nardo-light/20 text-center space-y-6">
-                        <div className="mx-auto w-16 h-16 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center">
-                            <AlertCircle size={32} />
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="text-2xl font-bold tracking-tight">Confirmer le vote</h3>
-                            <p className="text-nardo-grey">
-                                Attention, ce choix est définitif. Vous ne pourrez plus modifier votre vote par la suite.
+                        <div className="space-y-3">
+                            <h1 className="headline-display text-3xl sm:text-4xl lg:text-5xl">
+                                {settings?.title}
+                            </h1>
+                            <p className="text-lg text-nardo-grey sm:text-xl">{settings?.subtitle}</p>
+                            <p className="max-w-3xl text-sm leading-7 text-nardo-grey sm:text-base">
+                                {settings?.description}
                             </p>
                         </div>
-                        <div className="flex flex-col gap-3 pt-4">
+                    </div>
+
+                    <div className="rounded-[1.75rem] border border-nardo-light/15 bg-white/72 p-5 dark:bg-dark-card/72">
+                        <p className="section-kicker">Rappel</p>
+                        <p className="mt-3 text-lg font-semibold">Un seul choix, définitif</p>
+                        <p className="mt-2 text-sm text-nardo-grey">
+                            Sélectionnez un candidat, vérifiez votre résumé puis confirmez. Une fois validé, le vote ne peut plus être modifié.
+                        </p>
+                    </div>
+                </div>
+
+                {!isVoteActive && (
+                    <div className="mt-6 rounded-[1.5rem] border border-yellow-200 bg-yellow-50 px-4 py-4 text-sm text-yellow-800 dark:border-yellow-900/40 dark:bg-yellow-900/20 dark:text-yellow-200">
+                        Le vote est momentanément suspendu. Vous pouvez consulter les candidats, mais la validation est désactivée.
+                    </div>
+                )}
+            </section>
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <section className="space-y-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="section-kicker">Sélection</p>
+                            <h2 className="mt-2 text-2xl font-bold tracking-tight">Choisissez un candidat</h2>
+                        </div>
+                        <div className="rounded-full bg-white/80 px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-nardo-light/15 dark:bg-dark-card/80">
+                            {candidates.length} profil{candidates.length > 1 ? 's' : ''} disponible{candidates.length > 1 ? 's' : ''}
+                        </div>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+                        {candidates.map((candidate) => {
+                            const isSelected = selectedId === candidate.id;
+
+                            return (
+                                <article
+                                    key={candidate.id}
+                                    onClick={() => setSelectedId(candidate.id)}
+                                    className={`
+                                        group cursor-pointer overflow-hidden rounded-[2rem] border transition-all duration-300
+                                        ${isSelected
+                                            ? 'border-black bg-white shadow-[0_28px_70px_rgba(0,0,0,0.10)] dark:border-off-white dark:bg-dark-card'
+                                            : 'border-nardo-light/15 bg-white/78 hover:border-nardo-grey/30 hover:bg-white dark:bg-dark-card/78'}
+                                        ${selectedId !== null && !isSelected ? 'opacity-55' : ''}
+                                    `}
+                                >
+                                    <div className="relative aspect-[4/5] overflow-hidden bg-nardo-light/10">
+                                        {candidate.photo_url ? (
+                                            <img src={candidate.photo_url} alt={candidate.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center">
+                                                <ImageIcon size={48} className="text-nardo-light" />
+                                            </div>
+                                        )}
+
+                                        {isSelected && (
+                                            <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-black text-white shadow-lg dark:bg-off-white dark:text-black">
+                                                <Check size={20} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-3 p-5">
+                                        <div>
+                                            <p className="text-xl font-bold tracking-tight">{candidate.name}</p>
+                                            <p className="mt-1 text-sm font-medium uppercase tracking-[0.18em] text-nardo-grey">
+                                                {candidate.faculty}
+                                            </p>
+                                        </div>
+
+                                        <p className="text-sm leading-6 text-nardo-grey">
+                                            Cliquez pour sélectionner ce profil. Les autres options s’effacent automatiquement pour éviter toute ambiguïté.
+                                        </p>
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                <aside className="hidden xl:block">
+                    <div className="surface-panel sticky top-28 p-6">
+                        <p className="section-kicker">Résumé</p>
+                        <h2 className="mt-3 text-2xl font-bold tracking-tight">
+                            {selectedCandidate ? selectedCandidate.name : 'Aucun choix'}
+                        </h2>
+                        <p className="mt-2 text-sm text-nardo-grey">
+                            {selectedCandidate
+                                ? selectedCandidate.faculty
+                                : 'Sélectionnez une carte pour activer la validation.'}
+                        </p>
+
+                        <div className="mt-6 rounded-[1.5rem] border border-nardo-light/15 bg-nardo-grey/5 p-4">
+                            <div className="flex items-start gap-3">
+                                <CheckCheck size={18} className={selectedCandidate ? 'text-black dark:text-off-white' : 'text-nardo-grey'} />
+                                <p className="text-sm leading-6 text-nardo-grey">
+                                    Vérifiez votre choix avant validation. L’enregistrement du vote est définitif.
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            disabled={actionDisabled}
+                            onClick={() => setShowConfirm(true)}
+                            className="primary-button mt-6 w-full"
+                        >
+                            Valider mon choix
+                        </button>
+                    </div>
+                </aside>
+            </div>
+
+            <div className="fixed inset-x-0 bottom-4 z-20 px-4 xl:hidden">
+                <div className="mx-auto max-w-2xl rounded-[1.75rem] border border-nardo-light/15 bg-white/88 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.1)] backdrop-blur-xl dark:bg-dark-card/88">
+                    <button
+                        type="button"
+                        disabled={actionDisabled}
+                        onClick={() => setShowConfirm(true)}
+                        className="primary-button w-full"
+                    >
+                        {selectedCandidate ? `Valider ${selectedCandidate.name}` : 'Valider mon choix'}
+                    </button>
+                </div>
+            </div>
+
+            <div className="h-24 xl:hidden"></div>
+
+            {showConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="surface-panel-strong w-full max-w-md p-6 text-center sm:p-8">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-yellow-50 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-200">
+                            <AlertCircle size={32} />
+                        </div>
+                        <h3 className="mt-6 text-2xl font-bold tracking-tight">Confirmer le vote</h3>
+                        <p className="mt-3 text-sm leading-7 text-nardo-grey">
+                            Vous êtes sur le point de voter pour <span className="font-semibold text-black dark:text-off-white">{selectedCandidate?.name}</span>.
+                            Cette action est définitive.
+                        </p>
+
+                        <div className="mt-6 space-y-3">
                             <button
+                                type="button"
                                 disabled={submitting}
                                 onClick={handleVote}
-                                className="w-full py-3 bg-black text-white dark:bg-nardo-grey rounded-xl font-bold flex items-center justify-center"
+                                className="primary-button w-full"
                             >
-                                {submitting ? <Loader2 className="animate-spin mr-2" /> : "Oui, je confirme"}
+                                {submitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+                                Oui, confirmer
                             </button>
                             <button
+                                type="button"
                                 disabled={submitting}
                                 onClick={() => setShowConfirm(false)}
-                                className="w-full py-3 text-nardo-grey font-bold hover:text-black"
+                                className="secondary-button w-full"
                             >
                                 Annuler
                             </button>
@@ -164,9 +262,6 @@ const VotePage = () => {
                     </div>
                 </div>
             )}
-
-            {/* Spacer for fixed footer */}
-            <div className="h-24"></div>
         </div>
     );
 };
